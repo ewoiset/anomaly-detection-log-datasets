@@ -681,7 +681,7 @@ def evaluate_all(data_dir, time_det, normalize):
     tengram_time = time.time() - start_time
     best_threshold = get_best(detected_tengram, set(), test_normal_sequences.keys(), test_abnormal_sequences.keys())
     tp, fn, tn, fp = evaluate(detected_tengram[best_threshold], test_normal_sequences.keys(), test_abnormal_sequences.keys())
-    results.append(print_results('10-gram detection', tp, fn, tn, fp, None, tengram_time))
+    results.append(print_results('10-gram detection', tp, fn, tn, fp, best_threshold, tengram_time))
     # Combination of 2-gram and sequence length detection
     detected_twogram_len = detected_twogram[best_threshold_twogram].union(detected_comb_events_length)
     tp, fn, tn, fp = evaluate(detected_twogram_len, test_normal_sequences.keys(), test_abnormal_sequences.keys())
