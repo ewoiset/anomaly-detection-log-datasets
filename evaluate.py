@@ -2,6 +2,7 @@ import math
 import argparse
 import Levenshtein
 import time
+from sklearn.metrics import auc
 
 parser = argparse.ArgumentParser()
 
@@ -209,6 +210,7 @@ def print_results(name, tp, fn, tn, fp, threshold, det_time):
     fone = get_fone(tp, fn, tn, fp)
     acc = (tp + tn) / (tp + tn + fp + fn)
     mcc = "inf"
+    auc_score = auc([0, fpr, 1], [0, tpr, 1])
     if tp + fp != 0 and tp + fn != 0 and tn + fp != 0 and tn + fn != 0:
         mcc = ((tp * tn) - (fp * fn)) / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
     print('')
@@ -227,6 +229,7 @@ def print_results(name, tp, fn, tn, fp, threshold, det_time):
     print(' TNR=' + str(tnr))
     print(' P=' + str(p))
     print(' F1=' + str(fone))
+    print(f' AUC={auc_score}')
     print(' ACC=' + str(acc))
     print(' MCC=' + str(mcc))
     return {'tp': tp, 'fp': fp, 'tn': tn, 'fn': fn, 'tpr': tpr, 'fpr': fpr, 'tnr': tnr, 'p': p, 'f1': fone, 'acc': acc, 'threshold': threshold, 'name': name, 'time': det_time}
