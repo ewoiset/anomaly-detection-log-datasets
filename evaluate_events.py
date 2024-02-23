@@ -1,6 +1,7 @@
 import random
 import argparse
 import time
+from sklearn.metrics import auc
 
 parser = argparse.ArgumentParser()
 
@@ -35,6 +36,12 @@ def print_results(name, tp, fn, tn, fp, det_time):
         p = tp / (tp + fp)
     fone = get_fone(tp, fn, tn, fp)
     acc = (tp + tn) / (tp + tn + fp + fn)
+
+    if fpr != "inf" and tpr != "inf":
+        auc_score = auc([0, fpr, 1], [0, tpr, 1])
+    else:
+        auc_score = "inf"
+
     print('')
     print(name)
     print(' Time=' + str(det_time))
@@ -47,8 +54,10 @@ def print_results(name, tp, fn, tn, fp, det_time):
     print(' TNR=' + str(tnr))
     print(' P=' + str(p))
     print(' F1=' + str(fone))
+    print(f' AUC={auc_score}')
     print(' ACC=' + str(acc))
-    return {'tp': tp, 'fp': fp, 'tn': tn, 'fn': fn, 'tpr': tpr, 'fpr': fpr, 'tnr': tnr, 'p': p, 'f1': fone, 'acc': acc, 'name': name, 'time': det_time}
+    return {'tp': tp, 'fp': fp, 'tn': tn, 'fn': fn, 'tpr': tpr, 'fpr': fpr, 'tnr': tnr, 'p': p, 'f1': fone,
+            'auc': auc_score, 'acc': acc, 'name': name, 'time': det_time}
 
 def evaluate_all(source):
     normal_events = []
