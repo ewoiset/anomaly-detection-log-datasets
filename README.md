@@ -179,10 +179,10 @@ This splits data sets in training files (only containing normal sequences) as we
 
 ### Sample from parsed data sets
   
-Run the `sample.py` script and specify the directory of the log data to be sampled. Moreover, the sampling ratio can be specified. For example, use the following command to sample the HDFS log data set so that the training file comprises 1% of the normal events.
+Run the `sample.py` script, specify the directory of the log data to be sampled as well as the grouping method. Moreover, the sampling ratio can be specified. For example, use the following command to sample the HDFS log data set so that the training file comprises 1% of the normal events.
   
 ```shell
-python3 sample.py --data_dir hdfs_xu --train_ratio 0.01
+python3 sample.py --data_dir hdfs_xu --grouping_method sequence_identifier --train_ratio 0.01
 ```
 
 This will generate the files `<dataset>_train`, `<dataset>_test_normal`, and `<dataset>_test_abnormal` in the respective directory. In case that fine-granular anomaly labels are available, the sampling script will also generate `<dataset>_test_abnormal_<anomaly>`, which contain only those sequences that correspond to the respective anomaly class. Use the `sample_ratio` parameter in case that only a fraction of all (both normal and anomalous) sequences should be used; they will be randomly sampled. Use the `time_window` parameter in case that time windows should be used for grouping instead of sequence identifiers, e.g., `--time_window 3600` generates sequences by grouping events in time windows of 1 hour independent from any available sequence identifiers.
@@ -273,6 +273,7 @@ New event detection
  TNR=0.9998280978575564
  P=0.984577922077922
  F1=0.5274371684494303
+ AUC=0.6800126354592451
  ACC=0.980915856275396
  MCC=0.5895657230081826
 
@@ -287,6 +288,7 @@ Sequence length detection
  TNR=0.9998986682107701
  P=0.9910941475826972
  F1=0.5389604773847617
+ AUC=0.6850069418972843
  ACC=0.9812775910570734
  MCC=0.5997920384634181
 
@@ -301,6 +303,7 @@ New events + sequence length detection
  TNR=0.9997321945570353
  P=0.9838815072968852
  F1=0.6943889315910838
+ AUC=0.7681283612053499
  ACC=0.9860363350296236
  MCC=0.7212100247967879
 
@@ -316,6 +319,7 @@ Count vector clustering
  TNR=0.9975155616676318
  P=0.9239208732753367
  F1=0.9559409488318762
+ AUC=0.9938878437866606
  ACC=0.9973010370901071
  MCC=0.9551611400464348
 
@@ -331,6 +335,7 @@ Count vector clustering with idf
  TNR=0.9976784163288941
  P=0.9284399576105751
  F1=0.9575747116518538
+ AUC=0.9931378184507043
  ACC=0.9974099087234274
  MCC=0.9567415416969752
 
@@ -346,6 +351,7 @@ Count vector clustering with idf
  TNR=0.9976277504342791
  P=0.9116933854236832
  F1=0.8543744476707487
+ AUC=0.9007321552979092
  ACC=0.9918978432880639
  MCC=0.8520074824446313
 
@@ -361,6 +367,7 @@ Count vector clustering with idf
  TNR=0.9940775188187608
  P=0.8276279755635138
  F1=0.8772958186791715
+ AUC=0.9636915685316039
  ACC=0.9922806499987709
  MCC=0.875006494847835
 
@@ -375,6 +382,7 @@ Count vector clustering with idf
  TNR=0.0
  P=0.029567428416901093
  F1=0.05743660415202723
+ AUC=0.5
  ACC=0.029567428416901093
  MCC=inf
 
@@ -389,6 +397,7 @@ Count vector clustering with idf
  TNR=0.9975427041111754
  P=0.9179009733389759
  F1=0.9097336648791157
+ AUC=0.949626560512649
  ACC=0.9947091898194487
  MCC=0.9070467207448273
 
@@ -404,6 +413,7 @@ New events + sequence length detection + count vector clustering
  TNR=0.9975010856977418
  P=0.9236425964834679
  F1=0.9566487229412438
+ AUC=0.9948011426825804
  ACC=0.9973414249540807
  MCC=0.9559289328409916
 
@@ -419,6 +429,7 @@ New events + sequence length detection + count vector clustering with idf
  TNR=0.9976548928778228
  P=0.9278195488721804
  F1=0.9576064150834938
+ AUC=0.99351208832037
  ACC=0.9974099087234274
  MCC=0.9567967296426484
 
@@ -434,6 +445,7 @@ Edit distance detection
  TNR=0.9990174435437175
  P=0.9469830111306385
  F1=0.7163220088626292
+ AUC=0.7875179865301436
  ACC=0.9865104534327929
  MCC=0.7329451552899283
 
@@ -449,6 +461,7 @@ New events + sequence length detection + edit distance
  TNR=0.9990662999420962
  P=0.9595198870322429
  F1=0.8268379246239649
+ AUC=0.8627294915793152
  ACC=0.9910040422983856
  MCC=0.8307160056585571
 ```
@@ -468,15 +481,17 @@ Testing 348698 anomalous events
 New events
  Time=0.9108223915100098
  TP=348532
- FP=4912
- TN=4350361
+ FP=4858
+ TN=4350415
  FN=166
  TPR=R=0.9995239433549948
- FPR=0.0011278282670225265
- TNR=0.9988721717329775
- P=0.9861024660200768
- F1=0.9927678446809904
- ACC=0.9989204865421152
+ FPR=0.001115429503500699
+ TNR=0.9988845704964993
+ P=0.986253148080025
+ F1=0.9928442018664327
+ AUC=0.9992042569257471
+ ACC=0.9989319662047236
+
 ```
 
 ## Citation
