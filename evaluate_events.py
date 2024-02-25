@@ -37,7 +37,7 @@ def print_results(name, tp, fn, tn, fp, det_time):
     fone = get_fone(tp, fn, tn, fp)
     acc = (tp + tn) / (tp + tn + fp + fn)
 
-    if fpr != "inf" and tpr != "inf":
+    if fpr != "inf" and tpr != "inf" and 0 <= tpr <= 1 and 0 <= fpr <= 1:
         auc_score = auc([0, fpr, 1], [0, tpr, 1])
     else:
         auc_score = "inf"
