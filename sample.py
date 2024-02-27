@@ -78,7 +78,6 @@ def do_sample(source, train_ratio):
 
             # set id per window
             df_sequences_moving_window.insert(loc=0, column='id', value=df_sequences_moving_window.index + 1)
-            df_sequences_moving_window = df_sequences_moving_window
 
             # get normal & abnormal sequences
             df_normal = df_sequences_moving_window[df_sequences_moving_window['label'] == 'Normal'].drop(['label'], axis=1)
