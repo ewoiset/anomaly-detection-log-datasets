@@ -7,16 +7,20 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--data_dir", default="hdfs_xu", help="path to input files", type=str, choices=['adfa_verazuo', 'hdfs_xu', 'hdfs_loghub', 'bgl_loghub', 'bgl_cfdr', 'openstack_loghub', 'openstack_parisakalaki', 'hadoop_loghub', 'thunderbird_cfdr', 'awsctd_djpasco'])
-parser.add_argument("--grouping_method", default='sequence_identifier', help='choose grouping method for sampling', type=str, choices=['sequence_identifier', 'time_window', 'sliding_window'])
+parser.add_argument("--data_dir", default="hdfs_xu", help="path to input files", type=str,
+                    choices=['adfa_verazuo', 'hdfs_xu', 'hdfs_loghub', 'bgl_loghub', 'bgl_cfdr', 'openstack_loghub',
+                             'openstack_parisakalaki', 'hadoop_loghub', 'thunderbird_cfdr', 'awsctd_djpasco'])
+parser.add_argument("--grouping_method", default='sequence_identifier', help='choose grouping method for sampling', type=str,
+                    choices=['sequence_identifier', 'time_window', 'sliding_window'])
 parser.add_argument("--train_ratio", default=0.01, help="fraction of normal data used for training", type=float)
 parser.add_argument("--sample_ratio", default=1.0, help="fraction of data sampled from normal and anomalous events", type=float)
 # time window
-parser.add_argument("--time_window", default=3600, help="size of the fixed time window in seconds (setting this parameter replaces session-based with window-based grouping)", type=float)
+parser.add_argument("--time_window", default=3600,
+                    help="size of the fixed time window in seconds (setting this parameter replaces session-based with window-based grouping)",
+                    type=float)
 # sliding window
 parser.add_argument("--window_size", default=20, help='window size for sliding window', type=int)
 parser.add_argument("--step_size", default=4, help='step size for sliding window', type=int)
-
 
 params = vars(parser.parse_args())
 source = params["data_dir"]
@@ -27,8 +31,8 @@ grouping_method = params["grouping_method"]
 window_size = params["window_size"]
 step_size = params["step_size"]
 
-
-if source in ['adfa_verazuo', 'hdfs_xu', 'hdfs_loghub', 'openstack_loghub', 'openstack_parisakalaki', 'hadoop_loghub', 'awsctd_djpasco'] and grouping_method == 'time_window':
+if source in ['adfa_verazuo', 'hdfs_xu', 'hdfs_loghub', 'openstack_loghub', 'openstack_parisakalaki', 'hadoop_loghub',
+              'awsctd_djpasco'] and grouping_method == 'time_window':
     # Only BGL and Thunderbird should be used with time-window based grouping
     print('WARNING: Using time-window grouping, even though session-based grouping is recommended for this data set.')
 
@@ -41,69 +45,84 @@ def map_window(window):
 
 def do_sample(source, train_ratio):
     header = True
+    cnt = 0
     sequences_extracted = {}
-    tw_groups = {} # Only used for time-window based grouping
-    tw_labels = {} # Only used for time-window based grouping
+    tw_groups = {}  # Only used for time-window based grouping
+    tw_labels = {}  # Only used for time-window based grouping
     labels = {}
     train_file_name = source + '/' + source.split('_')[0] + '_train'
     test_norm_file_name = source + '/' + source.split('_')[0] + '_test_normal'
     test_abnormal_file_name = source + '/' + source.split('_')[0] + '_test_abnormal'
 
-    with (open(source + '/parsed.csv') as extracted, open(train_file_name, 'w+') as train,
-          open(test_norm_file_name, 'w+') as test_norm, open(test_abnormal_file_name, 'w+') as test_abnormal):
-        print('Read in parsed sequences ...')
-        if grouping_method == 'sliding_window':
-            # store data in df
-            df = pd.read_csv(extracted, sep=';')
+    if grouping_method == 'sliding_window':
+        with (open(source + '/parsed.csv') as extracted, open(train_file_name, 'w+') as train,
+              open(test_norm_file_name, 'w+') as test_norm, open(test_abnormal_file_name, 'w+') as test_abnormal):
+            print('Read in parsed sequences ...')
+            counter_normal = 0
+            current_window = []
+            current_label_window = []
 
-            print("Getting event types per window ...")
-            # get eventlables per window
-            if 'eventlabel' in df:
-                label_windows = np.lib.stride_tricks.as_strided(df.eventlabel,
-                                                                ((len(df) - window_size) // step_size + 1, window_size),
-                                                                (df.id.values.strides[0] * step_size, df.id.values.strides[0]))
-            else:
-                label_windows = np.lib.stride_tricks.as_strided(df.label,
-                                                                ((len(df) - window_size) // step_size + 1,window_size),
-                                                                (df.id.values.strides[0] * step_size, df.id.values.strides[0]))
+            for line in extracted:
+                if header:
+                    header = False
+                    colnames = line.strip('\n').split(';')
+                    continue
+                parts = line.strip('\n').split(';')
 
-            # get event types per window and store in df
-            windows = np.lib.stride_tricks.as_strided(df.event_type.astype(str),((len(df) - window_size) // step_size + 1, window_size),
-                                                      (df.id.values.strides[0] * step_size, df.id.values.strides[0]))
+                if 'eventlabel' in colnames:
+                    current_label_window.append(parts[colnames.index('eventlabel')])
+                else:
+                    current_label_window.append(parts[colnames.index('label')])
 
-            df_sequences_moving_window = pd.DataFrame(list(map(lambda inner_list: ' '.join(inner_list), windows)))
+                current_window.append(parts[colnames.index('event_type')])
 
-            # get normal/anomaly label per window and store to df
-            df_sequences_moving_window['label'] = np.array(list(map(map_window, label_windows)))
+                if len(current_window) == window_size:
+                    cnt += 1
 
-            # set id per window
-            df_sequences_moving_window.insert(loc=0, column='id', value=df_sequences_moving_window.index + 1)
+                    if cnt % 1000000 == 0:
+                        print(f'{cnt} sliding windows processed')
 
-            # get normal & abnormal sequences
-            df_normal = df_sequences_moving_window[df_sequences_moving_window['label'] == 'Normal'].drop(['label'], axis=1)
-            df_anormal = df_sequences_moving_window[df_sequences_moving_window['label'] == 'Anomaly'].drop(['label'], axis=1)
+                    value_str = ' '.join(map(str, current_window))
+                    if set(current_label_window) == {'Normal'}:
+                        test_norm.write(f'{cnt},{value_str}\n')
+                        counter_normal += 1
+                    else:
+                        test_abnormal.write(f'{cnt},{value_str}\n')
 
-            print(f'Processing complete, found {len(df_normal)} normal and {len(df_anormal)} anomalous sequences')
+                    current_window = current_window[step_size:]
+                    current_label_window = current_label_window[step_size:]
 
-            # sample dataset if sample_ratio is set
-            if sample_ratio < 1:
-                df_normal = df_normal.sample(frac=sample_ratio)
-                df_anormal = df_anormal.sample(frac=sample_ratio)
-                print(f'Sampled {len(df_normal)} normal and {len(df_anormal)} anomalous sequences')
+            print(f'Processing complete, found {counter_normal} normal and '
+                  f'{cnt - counter_normal} anomalous sequences')
 
-            # get train ratio
-            df_training = df_normal.sample(frac=train_ratio)
-            print(f'Randomly selecting {len(df_training)} sequences from '
-                  f'{len(df_normal)} normal sequences for training')
-            df_normal = df_normal[~df_normal.index.isin(df_training.index)]
+        df_normal = pd.read_csv(test_norm_file_name, header=None)
+        df_normal = df_normal.rename(columns={0: "id"})
+        df_abnormal = pd.read_csv(test_abnormal_file_name, header=None)
+        df_abnormal = df_abnormal.rename(columns={0: "id"})
 
-            print('Save to file ...')
-            df_training.to_csv(train_file_name, sep=',', index=False, header=False, mode='w')
-            df_normal.to_csv(test_norm_file_name, sep=',', index=False, header=False, mode='w')
-            df_anormal.to_csv(test_abnormal_file_name, sep=',', index=False, header=False, mode='w')
+        # sample dataset if sample_ratio is set
+        if sample_ratio < 1:
+            df_normal = df_normal.sample(frac=sample_ratio)
+            df_abnormal = df_abnormal.sample(frac=sample_ratio)
+            print(f'Sampled {len(df_normal)} normal and {len(df_abnormal)} anomalous sequences')
 
-        else:
-            cnt = 0
+        # get train ratio
+        num_train_logs = math.ceil(train_ratio * len(df_normal))
+        print('Randomly selecting ' + str(num_train_logs) + ' sequences from ' + str(
+            len(df_normal)) + ' normal sequences for training')
+
+        train_seq_id_list = random.sample(list(df_normal['id']), num_train_logs)
+        df_training = df_normal[df_normal['id'].isin(train_seq_id_list)]
+        df_normal = df_normal[~df_normal.index.isin(df_training.index)]
+
+        df_training.to_csv(train_file_name, sep=',', index=False, header=False, mode='w')
+        df_abnormal.to_csv(test_abnormal_file_name, sep=',', index=False, header=False, mode='w')
+        df_normal.to_csv(test_norm_file_name, sep=',', index=False, header=False, mode='w')
+
+    else:
+        with (open(source + '/parsed.csv') as extracted, open(train_file_name, 'w+') as train,
+              open(test_norm_file_name, 'w+') as test_norm, open(test_abnormal_file_name, 'w+') as test_abnormal):
+            print('Read in parsed sequences ...')
             for line in extracted:
                 if header:
                     header = False
@@ -142,7 +161,8 @@ def do_sample(source, train_ratio):
                         num_normal = 0
                         if 'Normal' in sequences_extracted:
                             num_normal = len(sequences_extracted['Normal'])
-                        print(str(cnt) + ' lines processed, ' + str(num_normal) + ' normal and ' + str(num_seq_anom) + ' anomalous sequences found so far')
+                        print(str(cnt) + ' lines processed, ' + str(num_normal) + ' normal and ' + str(
+                            num_seq_anom) + ' anomalous sequences found so far')
                     # Use label of the entire sequence
                     label = parts[colnames.index('label')]
                     # Group events by sequence identifier
@@ -179,9 +199,11 @@ def do_sample(source, train_ratio):
                     if lbl != "Normal":
                         num_sampled_anom += len(sampled_seq_list)
                 sequences_extracted = sampled_sequences
-                print('Sampled ' + str(len(sequences_extracted['Normal'])) + ' normal and ' + str(num_sampled_anom) + ' anomalous sequences')
+                print(
+                    'Sampled ' + str(len(sequences_extracted['Normal'])) + ' normal and ' + str(num_sampled_anom) + ' anomalous sequences')
             num_train_logs = math.ceil(train_ratio * len(sequences_extracted['Normal']))
-            print('Randomly selecting ' + str(num_train_logs) + ' sequences from ' + str(len(sequences_extracted['Normal'])) + ' normal sequences for training')
+            print('Randomly selecting ' + str(num_train_logs) + ' sequences from ' + str(
+                len(sequences_extracted['Normal'])) + ' normal sequences for training')
             train_seq_id_list = random.sample(list(sequences_extracted['Normal'].keys()), num_train_logs)
             print('Write vector files ...')
             for label, seq_id_dict in sequences_extracted.items():
@@ -199,6 +221,7 @@ def do_sample(source, train_ratio):
                         for seq_id, event_list in seq_id_dict.items():
                             test_label.write(str(seq_id) + ',' + ' '.join([str(event) for event in event_list]) + '\n')
                             test_abnormal.write(str(seq_id) + ',' + ' '.join([str(event) for event in event_list]) + '\n')
+
 
 if __name__ == "__main__":
     do_sample(source, train_ratio)
